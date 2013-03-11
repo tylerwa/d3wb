@@ -148,19 +148,14 @@ namespace Armory
 				public string Name {
 					get { return _name; }
 				}
+
 				public string RangeName {
 					get { return _rangeName; }
 				}
 
 				private readonly string _name;
 				private readonly string _rangeName;
-
 				private T _value;
-				/// <summary>
-				/// Initializes a new instance of the class.
-				/// </summary>
-				/// <param name="obj">The obj.</param>
-				/// <param name="name">The name.</param>
 				public Prop(JObject obj, string name)
 				{
 					_name = name;
