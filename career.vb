@@ -1,301 +1,265 @@
-Imports System.Text.RegularExpressions
-Imports Microsoft.VisualBasic
-Imports System.Net
-Imports Newtonsoft.Json
-Imports Newtonsoft.Json.Linq
+using Microsoft.VisualBasic;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
+using System.Net;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
-Namespace Armory
+namespace Armory
+{
 
-    Public Class Career
+    public class Career
+	{
 
-        Public Event SendUpdate(ByVal text As String)
+		public event SendUpdateEventHandler SendUpdate;
+		public delegate void SendUpdateEventHandler(string text);
 
-        Public ReadOnly Property Count As Integer
-            Get
-                Return _heroes.Count
-            End Get
-        End Property
+		public int Count {
+			get { return _heroes.Count; }
+		}
 
-        Public ReadOnly Property Heroes As List(Of IHero)
-            Get
-                Return _heroes
-            End Get
-        End Property
+		public List<IHero> Heroes {
+			get { return _heroes; }
+		}
 
-        Private ReadOnly _heroes As New List(Of IHero)
 
-        Public Sub Initialize(ByVal battleTag As String)
-            Dim jo As JObject
-            Dim url As String
-            Dim host As String = "http://us.battle.net/api/d3/profile/" & battleTag & "/"
-            jo = GetJObject(host)
-            For Each obj In jo("heroes")
-                url = host & "hero/" & obj("id").Value(Of Integer)()
-                _heroes.Add(New Hero(url))
-                RaiseEvent SendUpdate("Loaded " & _heroes.Last.Name & " <" & _heroes.Last.ParagonLevel & ">")
-            Next
-        End Sub
+		private readonly List<IHero> _heroes = new List<IHero>();
+		public void Initialize(string battleTag)
+		{
+			JObject jo = default(JObject);
+			string url = null;
+			string host = "http://us.battle.net/api/d3/profile/" + battleTag + "/";
+			jo = GetJObject(host);
+			foreach (object obj_loopVariable in jo("heroes")) {
+				obj = obj_loopVariable;
+				url = host + "hero/" + obj("id").Value<int>();
+				_heroes.Add(new Hero(url));
+				if (SendUpdate != null) {
+					SendUpdate("Loaded " + _heroes.Last.Name + " <" + _heroes.Last.ParagonLevel + ">");
+				}
+			}
+		}
 
-        Private Class Hero
 
-            Implements IHero
+		private class Hero : IHero
+		{
 
-            Public ReadOnly Property ActiveSkills As List(Of IActive) Implements IHero.ActiveSkills
-                Get
-                    Return _activeSkills
-                End Get
-            End Property
-            Public ReadOnly Property PassiveSkills As List(Of IPassive) Implements IHero.PassiveSkills
-                Get
-                    Return _passiveSkills
-                End Get
-            End Property
-            Public ReadOnly Property Stats As List(Of IProp(Of Object)) Implements IHero.Stats
-                Get
-                    Return _props
-                End Get
-            End Property
-            Public ReadOnly Property Items As List(Of IItem) Implements IHero.Items
-                Get
-                    Return _items
-                End Get
-            End Property
-            Public ReadOnly Property Id As Double Implements IHero.Id
-                Get
-                    Return GetVal(Of Double)("id")
-                End Get
-            End Property
-            Public ReadOnly Property Name As String Implements IHero.Name
-                Get
-                    Return GetVal(Of String)("name")
-                End Get
-            End Property
-            Public ReadOnly Property [Class] As String Implements IHero.Class
-                Get
-                    Return GetVal(Of String)("class")
-                End Get
-            End Property
-            Public ReadOnly Property Gender As Double Implements IHero.Gender
-                Get
-                    Return GetVal(Of Double)("gender")
-                End Get
-            End Property
-            Public ReadOnly Property Level As Double Implements IHero.Level
-                Get
-                    Return GetVal(Of Double)("level")
-                End Get
-            End Property
-            Public ReadOnly Property ParagonLevel As Double Implements IHero.ParagonLevel
-                Get
-                    Return GetVal(Of Double)("paragonLevel")
-                End Get
-            End Property
-            Public ReadOnly Property Hardcore As Boolean Implements IHero.Hardcore
-                Get
-                    Return GetVal(Of Boolean)("hardcore")
-                End Get
-            End Property
-            Public ReadOnly Property Dead As Boolean Implements IHero.Dead
-                Get
-                    Return GetVal(Of Boolean)("dead")
-                End Get
-            End Property
-            Public ReadOnly Property Lastupdated As Double Implements IHero.LastUpdated
-                Get
-                    Return GetVal(Of Double)("last-updated")
-                End Get
-            End Property
+			public List<IActive> ActiveSkills {
+				get { return _activeSkills; }
+			}
+			public List<IPassive> PassiveSkills {
+				get { return _passiveSkills; }
+			}
+			public List<IProp<object>> Stats {
+				get { return _props; }
+			}
+			public List<IItem> Items {
+				get { return _items; }
+			}
+			public double Id {
+				get { return GetVal<double>("id"); }
+			}
+			public string Name {
+				get { return GetVal<string>("name"); }
+			}
+			public string Class {
+				get { return GetVal<string>("class"); }
+			}
+			public double Gender {
+				get { return GetVal<double>("gender"); }
+			}
+			public double Level {
+				get { return GetVal<double>("level"); }
+			}
+			public double ParagonLevel {
+				get { return GetVal<double>("paragonLevel"); }
+			}
+			public bool Hardcore {
+				get { return GetVal<bool>("hardcore"); }
+			}
+			public bool Dead {
+				get { return GetVal<bool>("dead"); }
+			}
+			public double Lastupdated {
+				get { return GetVal<double>("last-updated"); }
+			}
+			double IHero.LastUpdated {
+				get { return Lastupdated; }
+			}
 
-            Private ReadOnly _profile As JObject
-            Private ReadOnly _activeSkills As New List(Of IActive)
-            Private ReadOnly _passiveSkills As New List(Of IPassive)
-            Private ReadOnly _props As New List(Of IProp(Of Object))
-            Private ReadOnly _items As New List(Of IItem)
+			private readonly JObject _profile;
+			private readonly List<IActive> _activeSkills = new List<IActive>();
+			private readonly List<IPassive> _passiveSkills = new List<IPassive>();
+			private readonly List<IProp<object>> _props = new List<IProp<object>>();
 
-            Public Sub New()
+			private readonly List<IItem> _items = new List<IItem>();
 
-            End Sub
+			public Hero()
+			{
+			}
 
-            Public Sub New(ByVal url As String)
-                Dim jo As JObject = Nothing
-                jo = GetJObject(url)
-                _profile = jo
-                For Each obj In jo
-                    _props.Add(New Prop(Of Object)(jo, obj.Key))
-                Next
-                jo = _profile("stats")
-                For Each obj In jo
-                    _props.Add(New Prop(Of Object)(jo, obj.Key))
-                Next
-                jo = _profile("items")
-                If jo.HasValues Then
-                    For Each obj In jo
-                        _items.Add(New Item(jo, obj.Key))
-                    Next
-                End If
-                'ImportSkills()
-                'CalculateAllResist()
-            End Sub
+			public Hero(string url)
+			{
+				JObject jo = null;
+				jo = Career.GetJObject(url);
+				_profile = jo;
+				foreach (object obj_loopVariable in jo) {
+					obj = obj_loopVariable;
+					_props.Add(new Prop<object>(jo, obj.Key));
+				}
+				jo = _profile("stats");
+				foreach (object obj_loopVariable in jo) {
+					obj = obj_loopVariable;
+					_props.Add(new Prop<object>(jo, obj.Key));
+				}
+				jo = _profile("items");
+				if (jo.HasValues) {
+					foreach (object obj_loopVariable in jo) {
+						obj = obj_loopVariable;
+						_items.Add(new Item(jo, obj.Key));
+					}
+				}
+				//ImportSkills()
+				//CalculateAllResist()
+			}
 
-            Private Function GetVal(Of T)(ByVal name As String) As T
-                For Each p In _props
-                    If p.Name = name Then
-                        Return p.Value.value
-                    End If
-                Next
-            End Function
+			private T GetVal<T>(string name)
+			{
+				foreach (object p_loopVariable in _props) {
+					p = p_loopVariable;
+					if (p.Name == name) {
+						return p.Value.value;
+					}
+				}
+			}
 
-            Private Class Prop(Of T) : Implements IProp(Of T)
+			private class Prop<T> : IProp<T>
+			{
 
-                Public Property Value As T Implements IProp(Of T).Value
-                    Get
-                        Return _value
-                    End Get
-                    Set(ByVal val As T)
-                        _value = val
-                    End Set
-                End Property
+				public T Value {
+					get { return _value; }
+					set { _value = value; }
+				}
 
-                Public ReadOnly Property Name As String Implements IProp(Of T).Name
-                    Get
-                        Return _name
-                    End Get
-                End Property
-                Public ReadOnly Property RangeName As String Implements IProp(Of T).RangeName
-                    Get
-                        Return _rangeName
-                    End Get
-                End Property
+				public string Name {
+					get { return _name; }
+				}
+				public string RangeName {
+					get { return _rangeName; }
+				}
 
-                Private ReadOnly _name As String
-                Private ReadOnly _rangeName As String
-                Private _value As T
+				private readonly string _name;
+				private readonly string _rangeName;
 
-                ''' <summary>
-                ''' Initializes a new instance of the class.
-                ''' </summary>
-                ''' <param name="obj">The obj.</param>
-                ''' <param name="name">The name.</param>
-                Public Sub New(ByVal obj As JObject, ByVal name As String)
-                    _name = name
-                    _rangeName = "Hero_" & name
-                    _value = obj(name).Value(Of T)()
-                End Sub
+				private T _value;
+				/// <summary>
+				/// Initializes a new instance of the class.
+				/// </summary>
+				/// <param name="obj">The obj.</param>
+				/// <param name="name">The name.</param>
+				public Prop(JObject obj, string name)
+				{
+					_name = name;
+					_rangeName = "Hero_" + name;
+					_value = obj(name).Value<T>();
+				}
 
-            End Class
+			}
 
-            Private Class Item
-                Implements IItem
-                Public ReadOnly Property Attributes As Dictionary(Of String, IAttribute) Implements IItem.Attributes
-                    Get
-                        Return _attr
-                    End Get
-                End Property
-                Public ReadOnly Property Data As Dictionary(Of String, String) Implements IItem.Data
-                    Get
-                        Return _data
-                    End Get
-                End Property
-                Public ReadOnly Property Slot As String Implements IItem.Slot
-                    Get
-                        Return _slot
-                    End Get
-                End Property
-                Private ReadOnly _slot As String
-                Private ReadOnly _data As Dictionary(Of String, String) = New Dictionary(Of String, String)
-                Private ReadOnly _attr As Dictionary(Of String, IAttribute) = New Dictionary(Of String, IAttribute)
-                Public Sub New(ByVal itemsJObj As JObject, ByVal slot As String)
-                    Dim dataJObj As JObject = itemsJObj(slot)
-                    Dim attrJObj As JObject
-                    _slot = slot
-                    _data.Add("name", dataJObj("name").Value(Of String)())
-                    _data.Add("icon", dataJObj("icon").Value(Of String)())
-                    _data.Add("displayColor", dataJObj("displayColor").Value(Of String)())
-                    _data.Add("tooltipParams", dataJObj("tooltipParams").Value(Of String)())
-                    attrJObj = GetJObject("http://us.battle.net/api/d3/data/" & _data("tooltipParams"))
-                    If attrJObj IsNot Nothing Then
-                        attrJObj = attrJObj("attributesRaw")
-                        For Each obj In attrJObj
-                            _attr.Add(obj.Key, New Attribute(_slot, obj))
-                        Next
-                    End If
-                End Sub
-                Private Class Attribute
-                    Implements IAttribute
-                    Public Property Value As Double Implements IAttribute.Value
-                        Get
-                            Return _value
-                        End Get
-                        Set(ByVal value As Double)
-                            _value = value
-                        End Set
-                    End Property
-                    Public Property Name As String Implements IAttribute.Name
-                        Get
-                            Return _name
-                        End Get
-                        Set(ByVal v As String)
-                            _name = v
-                        End Set
-                    End Property
-                    Public Property RangeName As String Implements IAttribute.RangeName
-                        Get
-                            Return _rangeName
-                        End Get
-                        Set(ByVal v As String)
-                            _rangeName = v
-                        End Set
-                    End Property
-                    Public Property Shown As Boolean Implements IAttribute.Shown
-                        Get
-                            Return _shown
-                        End Get
-                        Set(ByVal v As Boolean)
-                            _shown = v
-                        End Set
-                    End Property
-                    Public Property Slot As String Implements IAttribute.Slot
-                        Get
-                            Return _slot
-                        End Get
-                        Set(ByVal v As String)
-                            _slot = v
-                        End Set
-                    End Property
-                    Private _slot As String
-                    Private _value As Double
-                    Private _name As String
-                    Private _rangeName As String
-                    Private _shown As Boolean = False
-                    Public Sub New(ByVal slot As String, ByVal attr As KeyValuePair(Of String, JToken))
-                        _slot = slot
-                        _name = attr.Key
-                        _value = attr.Value("max").Value(Of Double)()
-                        _rangeName = _slot & "_" & Regex.Replace(_name, "#|!|@|&", "_")
-                    End Sub
-                End Class
-            End Class
+			private class Item : IItem
+			{
+				public Dictionary<string, IAttribute> Attributes {
+					get { return _attr; }
+				}
+				public Dictionary<string, string> Data {
+					get { return _data; }
+				}
+				public string Slot {
+					get { return _slot; }
+				}
+				private readonly string _slot;
+				private readonly Dictionary<string, string> _data = new Dictionary<string, string>();
+				private readonly Dictionary<string, IAttribute> _attr = new Dictionary<string, IAttribute>();
+				public Item(JObject itemsJObj, string slot)
+				{
+					JObject dataJObj = itemsJObj(slot);
+					JObject attrJObj = default(JObject);
+					_slot = slot;
+					_data.Add("name", dataJObj("name").Value<string>());
+					_data.Add("icon", dataJObj("icon").Value<string>());
+					_data.Add("displayColor", dataJObj("displayColor").Value<string>());
+					_data.Add("tooltipParams", dataJObj("tooltipParams").Value<string>());
+					attrJObj = Career.GetJObject("http://us.battle.net/api/d3/data/" + _data["tooltipParams"]);
+					if (attrJObj != null) {
+						attrJObj = attrJObj("attributesRaw");
+						foreach (object obj_loopVariable in attrJObj) {
+							obj = obj_loopVariable;
+							_attr.Add(obj.Key, new Attribute(_slot, obj));
+						}
+					}
+				}
+				private class Attribute : IAttribute
+				{
+					public double Value {
+						get { return _value; }
+						set { _value = value; }
+					}
+					public string Name {
+						get { return _name; }
+						set { _name = value; }
+					}
+					public string RangeName {
+						get { return _rangeName; }
+						set { _rangeName = value; }
+					}
+					public bool Shown {
+						get { return _shown; }
+						set { _shown = value; }
+					}
+					public string Slot {
+						get { return _slot; }
+						set { _slot = value; }
+					}
+					private string _slot;
+					private double _value;
+					private string _name;
+					private string _rangeName;
+					private bool _shown = false;
+					public Attribute(string slot, KeyValuePair<string, JToken> attr)
+					{
+						_slot = slot;
+						_name = attr.Key;
+						_value = attr.Value("max").Value<double>();
+						_rangeName = _slot + "_" + Regex.Replace(_name, "#|!|@|&", "_");
+					}
+				}
+			}
 
-        End Class
+		}
 
-        Private Shared Function GetJObject(ByVal url As String) As JObject
-            Dim jo As JObject = Nothing
-            Dim uri As Uri
-            Dim json As String = ""
-            Dim client = New WebClient
-            client.Proxy = Nothing
-            uri = New Uri(url)
-            Do
-                Try
-                    json = client.DownloadString(uri)
-                    jo = JObject.Parse(json)
-                Catch ex As Exception
-                    jo = Nothing
-                End Try
-            Loop Until jo IsNot Nothing
-            Return jo
-        End Function
+		private static JObject GetJObject(string url)
+		{
+			JObject jo = null;
+			Uri uri = null;
+			string json = "";
+			dynamic client = new WebClient();
+			client.Proxy = null;
+			uri = new Uri(url);
+			do {
+				try {
+					json = client.DownloadString(uri);
+					jo = JObject.Parse(json);
+				} catch (Exception ex) {
+					jo = null;
+				}
+			} while (!(jo != null));
+			return jo;
+		}
 
-    End Class
+	}
 
-End Namespace
+}
